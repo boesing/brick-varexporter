@@ -6,6 +6,10 @@ namespace Brick\VarExporter\Internal;
 
 use Brick\VarExporter\ExportException;
 use Brick\VarExporter\VarExporter;
+use function preg_match_all;
+use function preg_replace;
+use function str_replace;
+use function var_export;
 
 /**
  * The main exporter implementation, that handles variables of any type.
@@ -18,6 +22,8 @@ use Brick\VarExporter\VarExporter;
  */
 final class GenericExporter
 {
+    private const REGEX_ENVIRONMENT_VARIABLE = '/\%env\((?<varname>[\w\-]+)\)\%/';
+
     /**
      * @var ObjectExporter[]
      */
@@ -132,8 +138,10 @@ final class GenericExporter
             case 'boolean':
             case 'integer':
             case 'double':
-            case 'string':
                 return [var_export($var, true)];
+            case 'string':
+                assert(is_string($var));
+                return $this->exportString($var);
 
             case 'NULL':
                 // lowercase null
@@ -315,5 +323,25 @@ final class GenericExporter
         $lines[count($lines) - 1] .= $append;
 
         return $lines;
+    }
+
+    /**
+     * @param string $string The string.
+     *
+     * @return string[] The lines of code.
+     */
+    private function exportString(string $string) : array
+    {
+        $string = var_export($string, true);
+        if (preg_match_all(self::REGEX_ENVIRONMENT_VARIABLE, $string, $matches) === 0) {
+            return [$string];
+        }
+
+        foreach ($matches[0] as $index => $search) {
+            $replace = sprintf('\' . getenv(\'%s\') . \'', $matches['varname'][$index]);
+            $string = str_replace($search, $replace, $string);
+        }
+
+        return [preg_replace(['/ \. \'\'$/', '/^\'\' \. /'], '', $string)];
     }
 }

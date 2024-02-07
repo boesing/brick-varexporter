@@ -8,6 +8,7 @@ use Brick\VarExporter\ExportException;
 use Brick\VarExporter\Tests\Classes\PublicPropertiesOnly;
 use Brick\VarExporter\Tests\Classes\SetState;
 use Brick\VarExporter\VarExporter;
+use function putenv;
 
 class VarExporterTest extends AbstractTestCase
 {
@@ -475,5 +476,25 @@ TXT;
 PHP;
 
         yield [$var, $expected, 0];
+    }
+
+    public function testExportEnvironmentVariable(): void
+    {
+        $exported = VarExporter::export('Hello %env(NAME)%');
+        self::assertSame('\'Hello \' . getenv(\'NAME\')', $exported);
+
+        $exported = VarExporter::export('Hello %env(TEST_ENVIRONMENT1)%, but with multiple envs: %env(TEST-ENVIRONMENT2)%');
+        self::assertSame('\'Hello \' . getenv(\'TEST_ENVIRONMENT1\') . \', but with multiple envs: \' . getenv(\'TEST-ENVIRONMENT2\')', $exported);
+        putenv('TEST_ENVIRONMENT1=John');
+        putenv('TEST-ENVIRONMENT2=Doe');
+
+        $result = eval('return ' . $exported . ';');
+        self::assertSame('Hello John, but with multiple envs: Doe', $result);
+        putenv('TEST_ENVIRONMENT1=Jane');
+        $result = eval('return ' . $exported . ';');
+        self::assertSame('Hello Jane, but with multiple envs: Doe', $result);
+
+        $exported = VarExporter::export('%env(JUSTENV)%');
+        self::assertSame('getenv(\'JUSTENV\')', $exported);
     }
 }

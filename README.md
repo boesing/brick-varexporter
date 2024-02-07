@@ -339,6 +339,42 @@ echo VarExporter::export([
 
 You can disable exporting closures, using the [`NO_CLOSURES`](#varexporterno_closures) option. When this option is set, an `ExportException` will be thrown when attempting to export a closure.
 
+## Exporting environment variables
+
+Since version `0.5.0`, `VarExporter` can export strings containing `%env(VARNAME)%`. 
+
+```php
+echo VarExporter::export('%env(VARNAME)%');
+```
+
+```php
+getenv('VARNAME')
+```
+
+This does also work for strings containing more characters than `%env(VARNAME)%`:
+
+```php
+echo VarExporter::export('Foo, bar, %env(VARNAME)%, baz');
+```
+
+```php
+'Foo, bar, ' . getenv('VARNAME') . ', baz'
+```
+
+And of course, it does work for arrays containing strings containing `%env(VARNAME)%`:
+
+```php
+echo VarExporter::export([
+    'string' => 'Foo, bar, %env(VARNAME)%, baz'
+]);
+```
+
+```php
+[
+    'string' => 'Foo, bar, ' . getenv('VARNAME') . ', baz',
+]
+```
+
 ## Options
 
 `VarExporter::export()` accepts a bitmask of options as a second parameter:
